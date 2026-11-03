@@ -23,7 +23,7 @@ def setup_ddp():
 
     
     # 根据平台选择通信后端
-    if sys.platform == "darwin":  # macOS
+    if sys.platform in ["darwin", "win32"]:  # macOS 和 Windows
         backend = "gloo"
     else:
         backend = "nccl"
