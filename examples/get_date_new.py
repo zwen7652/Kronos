@@ -572,7 +572,7 @@ def save_all_history_stock_data(df, stock_code, save_dir="D:/lianghuajiaoyi/Kron
         os.makedirs(save_dir, exist_ok=True)
 
         # 保存CSV文件 - 使用全历史命名
-        csv_file = os.path.join(save_dir, f"{stock_code}_all_history.csv")
+        csv_file = os.path.join(save_dir, f"{stock_code}_stock_data.csv")
 
         # 重置索引以便保存日期列
         df_reset = df.reset_index()
@@ -597,7 +597,7 @@ def main_all_history(stock_code="002354"):
     主函数：获取并保存股票全历史数据
     """
     # 设置保存目录
-    save_directory = "D:/lianghuajiaoyi/Kronos/examples/data"
+    save_directory = "/Users/evan.zeng/github/Kronos/data/kline/000055"
 
     print("=" * 60)
     print(f"开始获取股票 {stock_code} 的全部历史数据")
@@ -631,7 +631,7 @@ def main_all_history(stock_code="002354"):
         print(f"总交易天数: {len(stock_data):,}")
 
         # 显示保存的文件
-        csv_file = os.path.join(save_directory, f"{stock_code}_all_history.csv")
+        csv_file = os.path.join(save_directory, f"{stock_code}_stock_data.csv")
         if os.path.exists(csv_file):
             file_size = os.path.getsize(csv_file) / 1024  # KB
             print(f"📄 生成的文件: {csv_file} ({file_size:.1f} KB)")
@@ -647,7 +647,7 @@ if __name__ == "__main__":
     """
 
     # ==================== 在这里修改参数 ====================
-    TARGET_STOCK_CODE = "300418"  # 股票代码
+    TARGET_STOCK_CODE = "000055"  # 股票代码
     # =====================================================
 
     print("股票全历史数据获取工具")

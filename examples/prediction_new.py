@@ -1,3 +1,10 @@
+import os
+# 清空所有代理相关的环境变量
+for key in ['http_proxy', 'https_proxy', 'all_proxy', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY']:
+    os.environ.pop(key, None)
+# 强制不走代理
+os.environ['NO_PROXY'] = '*'
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +18,20 @@ import time
 import random
 import akshare as ak
 from typing import Dict, List, Tuple, Optional
+from datetime import datetime
+
+import numpy as np
+
+def _json_default(o):
+    if isinstance(o, (np.bool_,)):
+        return bool(o)
+    if isinstance(o, (np.integer,)):
+        return int(o)
+    if isinstance(o, (np.floating,)):
+        return float(o)
+    if isinstance(o, (np.ndarray,)):
+        return o.tolist()
+    raise TypeError(f"Object of type {o.__class__.__name__} is not JSON serializable")
 
 warnings.filterwarnings('ignore')
 
@@ -22,8 +43,13 @@ except ImportError:
     print("⚠️ 无法导入Kronos模型，预测功能将不可用")
 
 # 设置中文字体
-plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
+plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
+
+ak.session = requests.Session()
+ak.session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+})
 
 
 # ==================== 基础数据获取函数 ====================
@@ -148,6 +174,7 @@ def create_realistic_fallback_data(stock_code="600580"):
     # 生成OHLC数据
     stock_data = []
     for i, date in enumerate(dates):
+        print("=========date:", date)
         close_price = prices[i]
 
         daily_volatility = abs(np.random.normal(0, 0.015))
@@ -391,7 +418,7 @@ class EnhancedMarketFactorAnalyzer:
         self.macro_factors = {}
         self.policy_factors = {}
 
-    def analyze_market_trend(self, index_codes=["000001", "399001"]):
+    def analyze_market_trend(self, index_codes=["sh000001", "sz399001"]):
         """
         分析大盘趋势 - 多指数综合分析
         """
@@ -401,11 +428,13 @@ class EnhancedMarketFactorAnalyzer:
             market_analysis = {}
 
             for index_code in index_codes:
-                index_name = "上证指数" if index_code == "000001" else "深证成指"
+                index_name = "上证指数" if index_code == "sh000001" else "深证成指"
                 print(f"  分析{index_name}({index_code})...")
 
                 # 获取指数数据
-                index_df = ak.stock_zh_index_hist(symbol=index_code, period="daily")
+                # index_df = ak.index_zh_a_hist(symbol=index_code, period="daily", start_date="20240101", end_date="20261012")
+                index_df = ak.stock_zh_index_daily(symbol=index_code)
+
 
                 if index_df is None or index_df.empty:
                     print(f"  ❌ 无法获取{index_name}数据")
@@ -841,7 +870,7 @@ def create_comprehensive_market_report(enhancement_info, output_dir, stock_code)
     # 保存报告
     report_file = os.path.join(output_dir, f'{stock_code}_comprehensive_analysis_report.json')
     with open(report_file, 'w', encoding='utf-8') as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
+        json.dump(report, f, ensure_ascii=False, indent=2, default=_json_default)
 
     print(f"📋 综合分析报告已保存: {report_file}")
     return report
@@ -1135,7 +1164,8 @@ def plot_comprehensive_prediction(
     plt.tight_layout()
 
     # 保存图片
-    chart_filename = os.path.join(output_dir, f'{stock_code}_comprehensive_prediction.png')
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    chart_filename = os.path.join(output_dir, f'{stock_code}_comprehensive_prediction_{timestamp}.png')
     plt.savefig(chart_filename, dpi=300, bbox_inches='tight', facecolor='white')
     print(f"📊 综合预测图表已保存: {chart_filename}")
 
@@ -1166,8 +1196,10 @@ def run_comprehensive_kronos_prediction(stock_code, stock_name, data_dir, pred_d
         # 2. 加载模型和分词器
         print("\n步骤2: 加载Kronos模型和分词器...")
         try:
-            tokenizer = KronosTokenizer.from_pretrained("NeoQuasar/Kronos-Tokenizer-base")
-            model = Kronos.from_pretrained("NeoQuasar/Kronos-base")
+            tokenizer = KronosTokenizer.from_pretrained("/Users/evan.zeng/github/Kronos/outputs/models/finetune_tokenizer_demo/checkpoints/best_model")
+            model = Kronos.from_pretrained("/Users/evan.zeng/github/Kronos/outputs/models/finetune_predictor_demo/checkpoints/best_model")
+            # tokenizer = KronosTokenizer.from_pretrained("NeoQuasar/Kronos-Tokenizer-base")
+            # model = Kronos.from_pretrained("NeoQuasar/Kronos-base")
             print("✅ 模型加载完成 - 使用Kronos-base模型")
         except Exception as e:
             print(f"❌ 模型加载失败: {e}")
@@ -1176,7 +1208,7 @@ def run_comprehensive_kronos_prediction(stock_code, stock_name, data_dir, pred_d
 
         # 3. 实例化预测器
         print("步骤3: 初始化预测器...")
-        predictor = KronosPredictor(model, tokenizer, device="cuda:0", max_context=512)
+        predictor = KronosPredictor(model, tokenizer, device="cpu", max_context=512)
         print("✅ 预测器初始化完成")
 
         # 4. 准备数据
@@ -1215,7 +1247,7 @@ def run_comprehensive_kronos_prediction(stock_code, stock_name, data_dir, pred_d
             pred_len=pred_len,
             T=1.0,
             top_p=0.9,
-            sample_count=1,
+            sample_count=20,
             verbose=True
         )
 
@@ -1270,12 +1302,12 @@ def run_comprehensive_kronos_prediction(stock_code, stock_name, data_dir, pred_d
             print(f"预测期间: {pred_len} 个交易日")
 
             # 输出关键因素
-            print(f"\n🔑 关键影响因素:")
-            for driver in enhancement_info['analysis_summary']['key_drivers']:
-                print(f"  ✅ {driver}")
-            for risk in enhancement_info['analysis_summary']['main_risks']:
-                print(f"  ⚠️  {risk}")
-            print(f"  💡 投资建议: {enhancement_info['analysis_summary']['investment_suggestion']}")
+            # print(f"\n🔑 关键影响因素:")
+            # for driver in enhancement_info['analysis_summary']['key_drivers']:
+            #     print(f"  ✅ {driver}")
+            # for risk in enhancement_info['analysis_summary']['main_risks']:
+            #     print(f"  ⚠️  {risk}")
+            # print(f"  💡 投资建议: {enhancement_info['analysis_summary']['investment_suggestion']}")
 
             # 保存详细预测数据
             prediction_details = pd.DataFrame({
@@ -1305,11 +1337,13 @@ def main():
     """
     # ==================== 配置参数 ====================
     STOCK_CONFIG = {
-        "stock_code": "603288",
-        "stock_name": "海天味业",
-        "data_dir": r"D:\lianghuajiaoyi\Kronos\examples\data",
-        "pred_days": 60,
-        "output_dir": r"D:\lianghuajiaoyi\Kronos\examples\yuce",
+        "stock_code": "002584",
+        "stock_name": "西陇科学",
+        # "stock_code": "000055",
+        # "stock_name": "方大集团",
+        "data_dir": "/Users/evan.zeng/github/Kronos/data/kline/000055",
+        "pred_days": 10,
+        "output_dir": "/Users/evan.zeng/github/Kronos/outputs/yuce",
         "history_years": 1
     }
 

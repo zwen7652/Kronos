@@ -9,7 +9,10 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-import comet_ml
+try:
+    import comet_ml
+except ImportError:
+    comet_ml = None
 
 # Ensure project root is in path
 sys.path.append('../')
@@ -182,7 +185,7 @@ def train_model(model, tokenizer, device, config, save_dir, logger, rank, world_
 def main(config: dict):
     """Main function to orchestrate the DDP training process."""
     rank, world_size, local_rank = setup_ddp()
-    device = torch.device(f"cuda:{local_rank}")
+    device = torch.device("cpu")
     set_seed(config['seed'], rank)
 
     save_dir = os.path.join(config['save_path'], config['predictor_save_folder_name'])
@@ -215,7 +218,7 @@ def main(config: dict):
 
     model = Kronos.from_pretrained(config['pretrained_predictor_path'])
     model.to(device)
-    model = DDP(model, device_ids=[local_rank], find_unused_parameters=False)
+    model = DDP(model, find_unused_parameters=False)
 
     if rank == 0:
         print(f"Predictor Model Size: {get_model_size(model.module)}")

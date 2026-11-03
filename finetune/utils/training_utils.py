@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.distributed as dist
 
+import sys
 
 def setup_ddp():
     """
@@ -20,15 +21,22 @@ def setup_ddp():
     if not dist.is_available():
         raise RuntimeError("torch.distributed is not available.")
 
-    dist.init_process_group(backend="nccl")
+    
+    # 根据平台选择通信后端
+    if sys.platform == "darwin":  # macOS
+        backend = "gloo"
+    else:
+        backend = "nccl"
+    dist.init_process_group(backend=backend)
     rank = int(os.environ["RANK"])
     world_size = int(os.environ["WORLD_SIZE"])
     local_rank = int(os.environ["LOCAL_RANK"])
-    torch.cuda.set_device(local_rank)
-    print(
-        f"[DDP Setup] Global Rank: {rank}/{world_size}, "
-        f"Local Rank (GPU): {local_rank} on device {torch.cuda.current_device()}"
-    )
+    if torch.cuda.is_available():
+        torch.cuda.set_device(local_rank)
+        print(
+            f"[DDP Setup] Global Rank: {rank}/{world_size}, "
+            f"Local Rank (GPU): {local_rank} on device {torch.cuda.current_device()}"
+        )
     return rank, world_size, local_rank
 
 
