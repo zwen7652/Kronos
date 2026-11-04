@@ -76,4 +76,4 @@ tmp/
 .python-version
 
 data/
-output/
+outputs/

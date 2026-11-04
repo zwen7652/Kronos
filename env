@@ -1,0 +1,8 @@
+set RANK=0
+set LOCAL_RANK=0
+set WORLD_SIZE=1
+set MASTER_ADDR=127.0.0.1
+set MASTER_PORT=29500
+set USE_LIBUV=0
+
+python finetune/train_tokenizer.py
